@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SENTINEL V9 ENTERPRISE</title>
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0f172a; color: #f8fafc; font-family: system-ui; }
+        .camera-box { border: 4px solid #334155; border-radius: 2rem; overflow: hidden; position: relative; background: #000; }
+        canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+        .btn-primary { background: linear-gradient(135deg, #06b6d4, #0891b2); }
+    </style>
+</head>
+<body class="p-4 flex flex-col min-h-screen">
+    <header class="mb-4 flex justify-between items-center">
+        <div>
+            <h1 class="text-xl font-black text-cyan-400">ORACLE SENTINEL V9</h1>
+            <p id="status" class="text-[10px] text-slate-400">READY FOR DISTRIBUTED SCAN</p>
+        </div>
+        <button onclick="switchCamera()" class="p-2 bg-slate-800 rounded-full">🔄</button>
+    </header>
+
+    <div class="camera-box w-full aspect-video mb-4 shadow-2xl">
+        <video id="video" class="w-full h-full object-cover" autoplay muted playsinline></video>
+        <canvas id="overlay"></canvas>
+    </div>
+
+    <div class="flex-1 flex flex-col gap-3">
+        <!-- ครูเลือกห้องที่รับผิดชอบ -->
+        <label class="text-xs font-bold text-slate-500 uppercase">เลือกห้องเรียนที่รับผิดชอบ</label>
+        <select id="roomSelect" onchange="loadSpecificRoom()" class="w-full bg-slate-800 p-4 rounded-2xl border border-slate-700 outline-none">
+            <option value="">-- โปรดเลือกห้องเรียน --</option>
+        </select>
+
+        <div id="controlPanel" class="hidden flex flex-col gap-3">
+            <div class="bg-slate-800/50 p-4 rounded-2xl border border-slate-700">
+                <p class="text-xs text-slate-400">กำลังสแกนวิชา: <span id="currentSub" class="text-cyan-400 font-bold">-</span></p>
+                <p class="text-xs text-slate-400">นักเรียนในคิว: <span id="queueCount" class="text-yellow-400">0</span></p>
+            </div>
+            
+            <button onclick="syncAttendance()" class="btn-primary w-full p-5 rounded-3xl text-xl font-black shadow-lg shadow-cyan-900/20 active:scale-95 transition-all">
+                บันทึกการเข้าเรียน
+            </button>
+            <div class="flex gap-2">
+                <button onclick="isAuto = !isAuto; this.innerText=isAuto?'AUTO: ON':'AUTO: OFF'; this.classList.toggle('bg-green-600')" class="flex-1 bg-slate-700 p-3 rounded-xl text-xs font-bold transition-colors">AUTO: OFF</button>
+                <button onclick="openReg()" class="flex-1 bg-slate-700 p-3 rounded-xl text-xs font-bold">ลงทะเบียนหน้า</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Registration Modal -->
+    <div id="regModal" class="fixed inset-0 bg-black/95 z-50 hidden place-items-center p-6">
+        <div class="bg-slate-900 p-6 rounded-3xl w-full max-w-sm border border-slate-800 flex flex-col gap-4">
+            <h2 class="text-lg font-bold">ลงทะเบียนอัตลักษณ์</h2>
+            <select id="regStudent" class="bg-slate-800 p-3 rounded-xl w-full"></select>
+            <button onclick="doRegister()" id="saveBtn" class="bg-cyan-600 p-4 rounded-xl font-bold">ถ่ายภาพและบันทึก</button>
+            <button onclick="document.getElementById('regModal').style.display='none'" class="text-slate-500 text-sm">ยกเลิก</button>
+        </div>
+    </div>
+
+    <script>
+        const APPS_SCRIPT_URL = "YOUR_WEB_APP_URL";
+        const API_KEY = "JUMJIM_SECURE_KEY_2024";
+        const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
+
+        let studentData = [], faceData = [], syncQueue = [], isAuto = false, currentFacingMode = 'user';
+
+        async function init() {
+            await Promise.all([
+                faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+                faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
+                faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+            ]);
+            startVideo();
+            fetchRooms();
+        }
+
+        async function startVideo() {
+            const video = document.getElementById('video');
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
+            video.srcObject = stream;
+            video.onloadedmetadata = () => {
+                const overlay = document.getElementById('overlay');
+                faceapi.matchDimensions(overlay, { width: video.videoWidth, height: video.videoHeight });
+                runDetection();
+            };
+        }
+
+        async function fetchRooms() {
+            const res = await fetch(`${APPS_SCRIPT_URL}?action=get_initial_data&key=${API_KEY}`).then(r=>r.json());
+            const sel = document.getElementById('roomSelect');
+            res.rooms.forEach(r => sel.add(new Option(`ห้อง ${r}`, r)));
+        }
+
+        async function loadSpecificRoom() {
+            const room = document.getElementById('roomSelect').value;
+            if(!room) return;
+            document.getElementById('status').innerText = "LOADING ROOM DATA...";
+            const res = await fetch(`${APPS_SCRIPT_URL}?action=get_room_data&key=${API_KEY}&room=${room}`).then(r=>r.json());
+            studentData = res.studentList;
+            faceData = res.faceData;
+            document.getElementById('controlPanel').classList.remove('hidden');
+            document.getElementById('status').innerText = `READY: ${room}`;
+            
+            // Populate Reg Select
+            const regSel = document.getElementById('regStudent');
+            regSel.innerHTML = '';
+            studentData.forEach(s => regSel.add(new Option(s.name, s.student_id)));
+        }
+
+        async function runDetection() {
+            const video = document.getElementById('video');
+            const overlay = document.getElementById('overlay');
+            setInterval(async () => {
+                const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+                const ctx = overlay.getContext('2d');
+                ctx.clearRect(0,0,overlay.width, overlay.height);
+
+                detections.forEach(d => {
+                    let best = { dist: 0.5 };
+                    faceData.forEach(f => {
+                        const dist = faceapi.euclideanDistance(d.descriptor, new Float32Array(f.descriptor));
+                        if(dist < best.dist) best = { dist, id: f.student_id };
+                    });
+
+                    if(best.id) {
+                        const s = studentData.find(x => x.student_id == best.id);
+                        if(s && !syncQueue.some(q => q.student_id == s.student_id)) {
+                            syncQueue.push(s);
+                            document.getElementById('queueCount').innerText = syncQueue.length;
+                            if(isAuto) syncAttendance();
+                        }
+                        ctx.strokeStyle = '#22d3ee';
+                        ctx.lineWidth = 4;
+                        ctx.strokeRect(d.detection.box.x, d.detection.box.y, d.detection.box.width, d.detection.box.height);
+                    }
+                });
+            }, 600);
+        }
+
+        async function syncAttendance() {
+            if(syncQueue.length === 0) return;
+            const data = [...syncQueue];
+            syncQueue = [];
+            document.getElementById('queueCount').innerText = 0;
+            
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ api_key: API_KEY, action: 'attendance_v9', data: data })
+            });
+            speak("บันทึกสำเร็จ");
+        }
+
+        function switchCamera() {
+            currentFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            startVideo();
+        }
+
+        function openReg() { document.getElementById('regModal').style.display='grid'; }
+        
+        async function doRegister() {
+            const btn = document.getElementById('saveBtn');
+            btn.disabled = true; btn.innerText = "CAPTURING...";
+            const id = document.getElementById('regStudent').value;
+            const video = document.getElementById('video');
+            const d = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
+            
+            if(!d) { alert("ไม่พบใบหน้า"); btn.disabled = false; return; }
+            
+            await fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({ api_key: API_KEY, action: 'register_face', student_id: id, descriptor: Array.from(d.descriptor) })
+            });
+            alert("บันทึกหน้าสำเร็จ");
+            loadSpecificRoom();
+            document.getElementById('regModal').style.display='none';
+            btn.disabled = false; btn.innerText = "ถ่ายภาพและบันทึก";
+        }
+
+        function speak(t) { 
+            const m = new SpeechSynthesisUtterance(t); 
+            m.lang = 'th-TH'; 
+            window.speechSynthesis.speak(m); 
+        }
+
+        init();
+    </script>
+</body>
+</html>
