@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SENTINEL V9 - COMPLETED</title>
+    <title>SENTINEL V9.2 - PRO EDITION</title>
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -12,80 +12,71 @@
         .glass { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         .camera-container { position: relative; border-radius: 1.5rem; overflow: hidden; border: 2px solid #22d3ee; background: #000; }
         canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .btn-modern:active { transform: scale(0.95); transition: 0.1s; }
-        /* ย้ายปุ่มสลับกล้องเข้าเฟรม */
         .btn-switch { position: absolute; top: 10px; right: 10px; z-index: 20; padding: 10px; border-radius: 12px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.3); }
+        .btn-modern:active { transform: scale(0.98); }
     </style>
 </head>
 <body class="p-3 flex flex-col min-h-screen max-w-xl mx-auto">
     
     <header class="mb-3 text-center">
-        <h1 class="text-2xl font-black text-cyan-400 uppercase tracking-tight">Sentinel V9</h1>
+        <h1 class="text-2xl font-black text-cyan-400 uppercase">Sentinel V9.2</h1>
         <div class="flex justify-center items-center gap-2 mt-1">
             <span id="status-dot" class="w-2.5 h-2.5 rounded-full bg-yellow-500 animate-pulse"></span>
-            <p id="status" class="text-sm font-bold text-slate-300">เตรียมระบบ...</p>
+            <p id="status" class="text-sm font-bold text-slate-300">Loading AI...</p>
         </div>
     </header>
 
     <main class="space-y-3">
         <div class="camera-container aspect-square md:aspect-video">
-            <button onclick="switchCamera()" class="btn-switch text-white">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
-            </button>
+            <button onclick="switchCamera()" class="btn-switch text-white"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg></button>
             <video id="video" class="w-full h-full object-cover" autoplay muted playsinline></video>
             <canvas id="overlay"></canvas>
             <div id="room-warning" class="absolute inset-0 flex items-center justify-center bg-black/80 z-10 text-center p-4">
-                <p class="text-lg font-bold text-white">📍 กรุณาเลือกห้องเรียนด้านล่าง</p>
+                <p class="text-lg font-bold text-white">📍 เลือกห้องเรียนเพื่อเริ่มระบบ</p>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
-            <div class="glass p-3 rounded-2xl border-l-4 border-cyan-500 shadow-lg">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">วิชาเรียน</p>
-                <p id="currentSubject" class="text-sm font-black text-white truncate">รอกดเลือกห้อง...</p>
+            <div class="glass p-3 rounded-2xl border-l-4 border-cyan-500">
+                <p class="text-[10px] font-bold text-slate-400">SUBJECT</p>
+                <p id="currentSubject" class="text-sm font-black text-white truncate">-</p>
             </div>
-            <div class="glass p-3 rounded-2xl border-l-4 border-yellow-500 text-right shadow-lg">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">มาเรียนแล้ว</p>
+            <div class="glass p-3 rounded-2xl border-l-4 border-yellow-500 text-right">
+                <p class="text-[10px] font-bold text-slate-400">PRESENT</p>
                 <p id="queueCount" class="text-2xl font-black text-yellow-400">0</p>
             </div>
         </div>
 
         <div class="space-y-3">
-            <div class="glass p-1 rounded-xl border border-white/10">
-                <select id="roomSelect" onchange="loadSpecificRoom()" class="w-full bg-transparent p-3 outline-none text-cyan-400 text-lg font-black text-center appearance-none">
-                    <option value="" class="bg-slate-900">📂 คลิกเลือกห้องเรียน</option>
-                </select>
-            </div>
+            <select id="roomSelect" onchange="loadSpecificRoom()" class="w-full glass p-3 rounded-xl text-cyan-400 text-lg font-black text-center outline-none border border-white/10">
+                <option value="" class="bg-slate-900">📂 คลิกเลือกห้องเรียน</option>
+            </select>
 
             <div id="activeControls" class="hidden flex gap-2">
-                <button onclick="openReg()" class="flex-1 py-4 bg-red-600 text-white font-black text-sm rounded-xl shadow-lg btn-modern uppercase">
-                    📸 ลงทะเบียนใหม่
-                </button>
-                <button onclick="syncAttendance()" id="syncBtn" class="flex-[1.5] bg-gradient-to-r from-blue-600 to-cyan-500 py-4 rounded-xl font-black text-sm shadow-xl btn-modern text-white uppercase">
-                    ✅ บันทึกรายชื่อ
-                </button>
+                <button onclick="openReg()" class="flex-1 py-4 bg-red-600 text-white font-black text-xs rounded-xl btn-modern">📸 ลงทะเบียนใบหน้า</button>
+                <button onclick="syncAttendance()" id="syncBtn" class="flex-[1.5] bg-gradient-to-r from-blue-600 to-cyan-500 py-4 rounded-xl font-black text-xs text-white btn-modern uppercase">✅ บันทึกชื่อเข้าเรียน</button>
             </div>
         </div>
     </main>
 
-    <div id="regModal" class="fixed inset-0 z-50 hidden place-items-center p-6 bg-black/90 backdrop-blur-sm">
-        <div class="glass p-6 rounded-[2rem] w-full max-w-sm border-2 border-white/10 shadow-2xl">
-            <h2 class="text-xl font-black mb-4 text-white text-center">บันทึกหน้าใหม่</h2>
-            <select id="regStudent" class="w-full glass p-3 rounded-xl mb-6 text-sm bg-slate-800 font-bold text-white outline-none border border-white/5"></select>
-            <button id="saveBtn" onclick="doRegister()" class="w-full bg-cyan-500 py-4 rounded-xl font-black text-lg mb-3 btn-modern text-white shadow-lg">ยืนยันข้อมูล</button>
-            <button onclick="document.getElementById('regModal').style.display='none'" class="w-full text-slate-400 text-sm font-bold py-1">ยกเลิก</button>
+    <div id="regModal" class="fixed inset-0 z-50 hidden place-items-center p-6 bg-black/90">
+        <div class="glass p-6 rounded-[2rem] w-full max-w-sm border border-white/10">
+            <h2 class="text-xl font-black mb-4 text-white text-center underline">ลงทะเบียนใหม่</h2>
+            <select id="regStudent" class="w-full glass p-3 rounded-xl mb-6 text-sm bg-slate-800 font-bold text-white outline-none"></select>
+            <button id="saveBtn" onclick="doRegister()" class="w-full bg-cyan-500 py-4 rounded-xl font-black text-lg mb-3 text-white">บันทึกอัตลักษณ์</button>
+            <button onclick="document.getElementById('regModal').style.display='none'" class="w-full text-slate-400 text-sm font-bold">ยกเลิก</button>
         </div>
     </div>
 
     <script>
-        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzGZzvvyXUuh8JQpVal4nivlAL4xqqUnD3ov1ZVNEf0Xs5KfVoBTYyq-myCxaRWh3lZ/exec"; 
+        const APPS_SCRIPT_URL = "วาง_URL_ที่ได้จากการ_DEPLOY_ที่นี่"; 
         const API_KEY = "JUMJIM_SECURE_KEY_2024";
 
         let studentList = [], faceData = [], syncQueue = [], alreadyCheckedID = new Set();
-        let currentFacingMode = 'user', currentStream = null;
+        let currentFacingMode = 'user', currentStream = null, currentEndTime = 0;
 
         async function init() {
-            updateStatus("โหลดระบบ AI...", "bg-yellow-500");
+            updateStatus("AI Loading...", "bg-yellow-500");
             const MODEL_URL = "https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights";
             try {
                 await Promise.all([
@@ -95,52 +86,63 @@
                 ]);
                 await startVideo();
                 loadInitialData();
-            } catch(e) { updateStatus("ระบบขัดข้อง", "bg-red-500"); }
+            } catch(e) { updateStatus("Error", "bg-red-500"); }
         }
 
         async function startVideo() {
             if (currentStream) currentStream.getTracks().forEach(t => t.stop());
-            const video = document.getElementById('video');
             try {
                 currentStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: currentFacingMode } });
-                video.srcObject = currentStream;
-                video.onloadedmetadata = () => {
+                document.getElementById('video').srcObject = currentStream;
+                document.getElementById('video').onloadedmetadata = () => {
                     faceapi.matchDimensions(document.getElementById('overlay'), { width: video.videoWidth, height: video.videoHeight });
                     detectLoop();
                 };
-            } catch(e) { updateStatus("กล้องขัดข้อง", "bg-red-500"); }
+            } catch(e) { alert("กล้องไม่ทำงาน"); }
         }
 
         async function detectLoop() {
             const video = document.getElementById('video'), overlay = document.getElementById('overlay'), ctx = overlay.getContext('2d');
-            const detectorOptions = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 });
+            const options = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.5 });
             
             setInterval(async () => {
                 if (!document.getElementById('roomSelect').value || video.paused) { ctx.clearRect(0, 0, overlay.width, overlay.height); return; }
-                const detections = await faceapi.detectAllFaces(video, detectorOptions).withFaceLandmarks().withFaceDescriptors();
+                
+                // ตรวจสอบเวลาเพื่อ Reset คิว (ถ้าหมดเวลาวิชา ให้ล้างรายชื่อที่เช็คแล้ว)
+                const nowMins = new Date().getHours() * 60 + new Date().getMinutes();
+                if (nowMins > currentEndTime) { alreadyCheckedID.clear(); }
+
+                const detections = await faceapi.detectAllFaces(video, options).withFaceLandmarks().withFaceDescriptors();
                 const resized = faceapi.resizeResults(detections, { width: video.videoWidth, height: video.videoHeight });
                 ctx.clearRect(0, 0, overlay.width, overlay.height);
 
                 resized.forEach(det => {
-                    let best = { dist: 0.45, s: null };
+                    let best = { dist: 0.35, s: null }; // ปรับความแม่นยำ 0.35 (เข้มงวด)
                     faceData.forEach(f => {
                         const d = faceapi.euclideanDistance(det.descriptor, new Float32Array(f.descriptor));
                         if (d < best.dist) best = { dist: d, s: studentList.find(x => x.student_id == f.student_id) };
                     });
+
                     const { x, y, width, height } = det.detection.box;
                     if (best.s) {
                         if (alreadyCheckedID.has(best.s.student_id)) {
-                            drawBox(ctx, x, y, width, height, '#f59e0b', "บันทึกแล้ว", 4);
+                            drawBox(ctx, x, y, width, height, '#f59e0b', "CHECKED", 4);
                         } else {
                             drawBox(ctx, x, y, width, height, '#22d3ee', best.s.name, 6);
                             syncQueue.push(best.s);
                             alreadyCheckedID.add(best.s.student_id);
                             document.getElementById('queueCount').innerText = syncQueue.length;
-                            speak(best.s.name);
+                            handleGreeting(best.s.name);
                         }
-                    } else { drawBox(ctx, x, y, width, height, '#ef4444', "หน้าใหม่", 2, true); }
+                    } else { drawBox(ctx, x, y, width, height, '#ef4444', "NEW FACE", 2, true); }
                 });
             }, 600);
+        }
+
+        function handleGreeting(name) {
+            const hr = new Date().getHours();
+            let greet = (hr < 12) ? "อรุณสวัสดิ์ครับ " : (hr < 16) ? "สวัสดีตอนบ่ายครับ " : "สวัสดีตอนเย็นครับ ";
+            speak(greet + name);
         }
 
         function drawBox(ctx, x, y, w, h, color, text, lw, dash=false) {
@@ -154,73 +156,69 @@
         async function loadInitialData() {
             try {
                 const res = await fetch(`${APPS_SCRIPT_URL}?key=${API_KEY}&action=get_initial_data`).then(r => r.json());
-                const sel = document.getElementById('roomSelect');
                 res.rooms.forEach(r => {
-                    const opt = document.createElement('option');
-                    opt.value = r; opt.text = "📍 ห้อง " + r;
-                    sel.appendChild(opt);
+                    const opt = document.createElement('option'); opt.value = r; opt.text = "📍 ห้อง " + r;
+                    document.getElementById('roomSelect').appendChild(opt);
                 });
-                updateStatus("พร้อมสแกน", "bg-green-500");
-            } catch(e) { updateStatus("การเชื่อมต่อมีปัญหา", "bg-red-500"); }
+                updateStatus("READY", "bg-green-500");
+            } catch(e) { updateStatus("Offline", "bg-red-500"); }
         }
 
         async function loadSpecificRoom() {
             const room = document.getElementById('roomSelect').value;
             if(!room) return;
+            alreadyCheckedID.clear(); syncQueue = []; 
+            document.getElementById('queueCount').innerText = "0";
             document.getElementById('room-warning').style.display = 'none';
             document.getElementById('activeControls').classList.remove('hidden');
-            updateStatus("ซิงค์นักเรียน...", "bg-cyan-500");
+            updateStatus("Syncing...", "bg-cyan-500");
             try {
                 const res = await fetch(`${APPS_SCRIPT_URL}?key=${API_KEY}&action=get_room_data&room=${encodeURIComponent(room)}`).then(r => r.json());
                 studentList = res.studentList || [];
                 faceData = res.faceData || [];
-                document.getElementById('currentSubject').innerText = (res.schedule && res.schedule.subject) ? res.schedule.subject : "นอกเวลาเรียน";
+                currentEndTime = res.schedule.endTime || 0;
+                document.getElementById('currentSubject').innerText = res.schedule.subject || "นอกเวลาเรียน";
+                
                 const regSel = document.getElementById('regStudent');
                 regSel.innerHTML = '<option value="">-- เลือกชื่อนักเรียน --</option>';
                 studentList.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.student_id; opt.text = s.name;
+                    const opt = document.createElement('option'); opt.value = s.student_id; opt.text = s.name;
                     regSel.appendChild(opt);
                 });
-                updateStatus(`สแกนห้อง: ${room}`, "bg-green-500");
-            } catch(e) { updateStatus("โหลดข้อมูลล้มเหลว", "bg-red-500"); }
+                updateStatus(`Room ${room}`, "bg-green-500");
+            } catch(e) { updateStatus("Error", "bg-red-500"); }
         }
 
         async function syncAttendance() {
-            if (syncQueue.length === 0) { alert("ไม่มีข้อมูลสแกน"); return; }
+            if (syncQueue.length === 0) return;
             const btn = document.getElementById('syncBtn');
-            btn.innerText = "กำลังเซฟ..."; btn.disabled = true;
+            btn.innerText = "SAVING..."; btn.disabled = true;
             try {
                 await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ api_key: API_KEY, action: 'attendance_sync', records: syncQueue })});
                 syncQueue = [];
                 document.getElementById('queueCount').innerText = "0";
-                btn.innerText = "✅ บันทึกรายชื่อ"; btn.disabled = false;
+                btn.innerText = "✅ บันทึกชื่อเข้าเรียน"; btn.disabled = false;
                 speak("บันทึกข้อมูลเรียบร้อย");
             } catch(e) { alert("Error!"); btn.disabled = false; }
         }
 
-        function switchCamera() { 
-            currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user'; 
-            startVideo(); 
-        }
-
-        function speak(t) { const utterance = new SpeechSynthesisUtterance(t); utterance.lang = 'th-TH'; window.speechSynthesis.speak(utterance); }
+        function speak(t) { const u = new SpeechSynthesisUtterance(t); u.lang = 'th-TH'; window.speechSynthesis.speak(u); }
         function updateStatus(t, c) { document.getElementById('status').innerText = t; document.getElementById('status-dot').className = `w-2.5 h-2.5 rounded-full animate-pulse ${c}`; }
+        function switchCamera() { currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user'; startVideo(); }
         function openReg() { document.getElementById('regModal').style.display='grid'; }
 
         async function doRegister() {
-            const btn = document.getElementById('saveBtn');
-            const id = document.getElementById('regStudent').value;
-            if(!id) { alert("เลือกรายชื่อก่อนครับ"); return; }
-            btn.disabled = true; btn.innerText = "กำลังประมวลผล...";
+            const btn = document.getElementById('saveBtn'), id = document.getElementById('regStudent').value;
+            if(!id) return;
+            btn.disabled = true; btn.innerText = "Processing...";
             try {
                 const d = await faceapi.detectSingleFace(document.getElementById('video'), new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptor();
                 if(!d) { alert("ไม่พบใบหน้า"); btn.disabled = false; return; }
                 await fetch(APPS_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ api_key: API_KEY, action: 'register_face', student_id: id, descriptor: Array.from(d.descriptor) })});
-                alert("บันทึกหน้าสำเร็จ");
+                alert("บันทึกสำเร็จ");
                 loadSpecificRoom();
                 document.getElementById('regModal').style.display='none';
-            } catch (e) { alert("การบันทึกล้มเหลว"); } finally { btn.disabled = false; btn.innerText = "ยืนยันข้อมูล"; }
+            } catch (e) { alert("ล้มเหลว"); } finally { btn.disabled = false; btn.innerText = "บันทึกอัตลักษณ์"; }
         }
 
         init();
